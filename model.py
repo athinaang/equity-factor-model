@@ -91,6 +91,7 @@ spy_value = 10000
 portfolio_history = []
 portfolio_returns = []
 spy_returns = []
+previous_tickers = []  # 👈 NEW: track previous portfolio
 rebalance_dates = pd.date_range(start='2021-01-01', end='2025-07-01', freq='6ME')
 
 for i in range(len(rebalance_dates) - 1):
@@ -129,17 +130,29 @@ for i in range(len(rebalance_dates) - 1):
     top30 = df_sorted.head(30)
     top30_tickers = top30['Ticker'].tolist()
 
-    # E: Stock returns start_date to end_date
+    # E: Transaction costs 
+    if previous_tickers:
+        prev = set(previous_tickers)
+        curr = set(top30_tickers)
+        stocks_left = prev - curr
+        stocks_entered = curr - prev
+        trades = len(stocks_left) + len(stocks_entered)
+        transaction_cost = (trades / 30) * 0.002
+        portfolio_value = portfolio_value * (1 - transaction_cost)
+        print(f"  Trades: {trades} stocks | TC: {transaction_cost:.2%}")
+    previous_tickers = top30_tickers  
+
+    # F: Stock returns start_date to end_date
     price_start = close_prices.iloc[start_idx][top30_tickers]
     price_end = close_prices.iloc[end_idx][top30_tickers]
     stock_returns = (price_end / price_start) - 1
 
-    # F: Update portfolio value
+    # G: Update portfolio value
     portfolio_return = stock_returns.mean()
     portfolio_value = portfolio_value * (1 + portfolio_return)
     portfolio_returns.append(portfolio_return)
 
-    # G: Save to history
+    # H: Save to history
     portfolio_history.append({
         'Date': end_date,
         'Value': portfolio_value,
